@@ -21,7 +21,7 @@ Route::get('/dashboard', [HomeController::class, 'index'])->middleware('auth:san
 
 
 // Category routes
-Route::resource('categories', 'App\Http\Controllers\CategoryController')->except('create', 'edit')->middleware('auth:sanctum');
+Route::apiResource('categories', 'App\Http\Controllers\CategoryController')->middleware('auth:sanctum');
 
 // Product routes
-Route::resource('products', 'App\Http\Controllers\ProductController')->except('create', 'edit')->middleware('auth:sanctum');
+Route::apiResource('products', 'App\Http\Controllers\ProductController')->middleware('auth:sanctum');
