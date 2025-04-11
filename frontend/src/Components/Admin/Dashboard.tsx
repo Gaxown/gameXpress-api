@@ -1,517 +1,589 @@
-import React, { useState, useEffect } from 'react';
-import api from '../../lib/axios'; // Assuming correct path
-import { useAuth } from '../../context/AuthContext'; // Assuming correct path
+import React, { useState, useEffect } from "react";
+import api from "../../lib/axios";
+import { useAuth } from "../../context/AuthContext";
 import {
-  BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  ReferenceLine, Label
-} from 'recharts';
+    AreaChart,
+    Area,
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+    ResponsiveContainer,
+    PieChart,
+    Pie,
+    Cell,
+    RadialBarChart,
+    RadialBar,
+    Radar,
+    RadarChart,
+    PolarGrid,
+    PolarAngleAxis,
+    PolarRadiusAxis,
+} from "recharts";
 import {
-  CubeIcon, TagIcon, UsersIcon, ExclamationTriangleIcon, NoSymbolIcon,
-  ClockIcon, CheckCircleIcon, CubeTransparentIcon, ShoppingCartIcon,
-  CalendarDaysIcon, ChartBarIcon, ChartPieIcon, BellAlertIcon, ListBulletIcon, ViewColumnsIcon // Added more icons
-} from '@heroicons/react/24/outline'; // Using outline icons
+    Squares2X2Icon,
+    TagIcon,
+    UsersIcon,
+    ExclamationCircleIcon,
+    ArrowTrendingUpIcon,
+    BellAlertIcon,
+    ShoppingBagIcon,
+    UserCircleIcon,
+    Cog6ToothIcon,
+    ArrowRightOnRectangleIcon,
+    ShoppingCartIcon,
+    ChartBarIcon,
+    CheckBadgeIcon,
+    ExclamationTriangleIcon,
+    DocumentTextIcon,
+} from "@heroicons/react/24/outline";
 
-// Interface definitions (keep as they are)
+// Keep existing interfaces
 interface Product {
-  id: number;
-  name: string;
-  stock: number;
-  category?: {
     id: number;
     name: string;
-  };
-  price: number;
-  status: string;
-  created_at: string;
+    stock: number;
+    category?: {
+        id: number;
+        name: string;
+    };
+    price: number;
+    status: string;
+    created_at: string;
 }
 
 interface DashboardStats {
-  total_products: number;
-  total_categories: number;
-  total_users: number;
-  low_stock_products: number;
-  out_of_stock_products: number;
-  recent_products: Product[];
-  stock_alerts: Product[];
+    total_products: number;
+    total_categories: number;
+    total_users: number;
+    low_stock_products: number;
+    out_of_stock_products: number;
+    recent_products: Product[];
+    stock_alerts: Product[];
 }
 
-// Helper to format numbers (optional)
+// Helper functions
 const formatNumber = (num: number): string => {
-  return num.toLocaleString('en-US');
+    return num.toLocaleString("en-US");
 };
 
-// --- Stat Card Component ---
-interface StatCardProps {
-  title: string;
-  value: number | string;
-  icon: React.ElementType; // Use ElementType for component icons
-  colorClass?: string; // e.g., 'brand', 'accent', 'danger'
-  description?: string; // Optional description or comparison
-}
-
-const StatCard: React.FC<StatCardProps> = ({
-  title,
-  value,
-  icon: Icon,
-  colorClass = 'brand',
-  description
-}) => {
-  // Map colorClass to Tailwind classes
-  const colorMap: Record<string, { text: string; bgGradient: string }> = {
-    brand: { text: 'text-brand-600', bgGradient: 'from-brand-100 to-brand-200' },
-    accent: { text: 'text-accent-600', bgGradient: 'from-accent-100 to-accent-200' },
-    blue: { text: 'text-blue-600', bgGradient: 'from-blue-100 to-blue-200' },
-    warning: { text: 'text-warning-600', bgGradient: 'from-warning-100 to-warning-200' },
-    danger: { text: 'text-danger-600', bgGradient: 'from-danger-100 to-danger-200' },
-    success: { text: 'text-success-600', bgGradient: 'from-success-100 to-success-200' },
-  };
-
-  const { text, bgGradient } = colorMap[colorClass] || colorMap.brand;
-
-  return (
-    <div className="bg-white rounded-2xl shadow-lg p-6 transition-all duration-300 ease-in-out hover:shadow-xl hover:scale-[1.02] border border-slate-100">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <dt className="text-sm font-medium text-slate-500 mb-1">{title}</dt>
-          <dd className="text-3xl font-bold tracking-tight text-slate-900">{value}</dd>
-          {description && <p className="text-xs text-slate-400 mt-1">{description}</p>}
-        </div>
-        <div className={`flex-shrink-0 rounded-full p-3 bg-gradient-to-br ${bgGradient}`}>
-          <Icon className={`h-6 w-6 ${text}`} aria-hidden="true" />
-        </div>
-      </div>
-    </div>
-  );
+const truncateText = (text: string, maxLength: number): string => {
+    return text.length > maxLength
+        ? text.substring(0, maxLength) + "..."
+        : text;
 };
 
-// --- Main Dashboard Component ---
-const AdminDashboard: React.FC = () => {
-  const { user } = useAuth();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await api.get<DashboardStats>('/admin/dashboard');
-        setStats(response.data);
-      } catch (err: any) {
-        console.error("Failed to fetch dashboard data:", err);
-        setError(err.response?.data?.message || err.message || "Failed to load dashboard data.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchDashboardData();
-  }, []);
-
-  // --- Loading State ---
-  if (isLoading) {
+// New StatCard component with updated design
+const StatCard: React.FC<{
+    title: string;
+    value: string | number;
+    icon: React.ElementType;
+    bgColor: string;
+    textColor: string;
+    trend?: string;
+    trendUp?: boolean;
+}> = ({ title, value, icon: Icon, bgColor, textColor, trend, trendUp }) => {
     return (
-        <div className="flex items-center justify-center min-h-[calc(100vh-200px)] p-10 bg-gradient-to-br from-slate-50 to-indigo-100">
-            <div className="flex flex-col items-center">
-                <svg className="animate-spin h-10 w-10 text-brand-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <p className="text-lg font-medium text-slate-600">Loading Dashboard...</p>
+        <div
+            className={`relative overflow-hidden rounded-xl shadow-lg ${bgColor} p-6`}
+        >
+            <div className="absolute right-0 top-0 opacity-20">
+                <Icon className="h-24 w-24 -mr-6 -mt-6" />
+            </div>
+            <h3 className="text-sm font-medium uppercase tracking-wider opacity-80">
+                {title}
+            </h3>
+            <p className={`text-3xl font-bold mt-1 ${textColor}`}>{value}</p>
+        </div>
+    );
+};
+
+// New component for product card
+const ProductCard: React.FC<{
+    product: Product;
+    variant: "recent" | "alert";
+}> = ({ product, variant }) => {
+    const isAlert = variant === "alert";
+    const criticalStock = product.stock <= 5;
+
+    return (
+        <div
+            className={`rounded-lg border p-4 transition-all duration-300 ${
+                isAlert
+                    ? criticalStock
+                        ? "border-red-200 bg-red-50 hover:shadow-red-100"
+                        : "border-amber-200 bg-amber-50 hover:shadow-amber-100"
+                    : "border-indigo-100 bg-white hover:shadow-indigo-100"
+            } hover:shadow-lg`}
+        >
+            <div className="flex items-center gap-4">
+                <div
+                    className={`rounded-full p-3 ${
+                        isAlert
+                            ? criticalStock
+                                ? "bg-red-100 text-red-600"
+                                : "bg-amber-100 text-amber-600"
+                            : "bg-indigo-100 text-indigo-600"
+                    }`}
+                >
+                    {isAlert ? (
+                        <ExclamationCircleIcon className="h-5 w-5" />
+                    ) : (
+                        <ShoppingBagIcon className="h-5 w-5" />
+                    )}
+                </div>
+                <div className="flex-1 min-w-0">
+                    <h4
+                        className="font-semibold text-gray-800 truncate"
+                        title={product.name}
+                    >
+                        {truncateText(product.name, 24)}
+                    </h4>
+                    <div className="flex text-xs text-gray-500 gap-2 mt-1">
+                        <span className="flex items-center">
+                            <TagIcon className="h-3 w-3 mr-1" />
+                            {product.category?.name || "Uncategorized"}
+                        </span>
+                        {!isAlert && (
+                            <span className="flex items-center">
+                                <span className="font-medium">
+                                    ${product.price.toFixed(2)}
+                                </span>
+                            </span>
+                        )}
+                        {isAlert && (
+                            <div
+                                className={`ml-auto px-2 py-1 rounded-full text-xs font-medium ${
+                                    criticalStock
+                                        ? "bg-red-100 text-red-700"
+                                        : "bg-amber-100 text-amber-700"
+                                }`}
+                            >
+                                Stock: {product.stock}
+                            </div>
+                        )}
+                        {!isAlert && (
+                            <div
+                                className={`ml-auto px-2 py-1 rounded-full text-xs font-medium ${
+                                    product.status === "available"
+                                        ? "bg-green-100 text-green-700"
+                                        : product.status === "out_of_stock"
+                                        ? "bg-red-100 text-red-700"
+                                        : "bg-amber-100 text-amber-700"
+                                }`}
+                            >
+                                {product.status.replace("_", " ")}
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );
-  }
+};
 
-  // --- Error State ---
-  if (error) {
+// New sidebar component
+const Sidebar: React.FC<{ active: string }> = ({ active }) => {
+    const navItems = [
+        { name: "Dashboard", icon: Squares2X2Icon, active: true },
+        { name: "Products", icon: ShoppingBagIcon, active: false },
+        { name: "Orders", icon: ShoppingCartIcon, active: false },
+        { name: "Customers", icon: UsersIcon, active: false },
+        { name: "Reports", icon: DocumentTextIcon, active: false },
+        { name: "Settings", icon: Cog6ToothIcon, active: false },
+    ];
+
     return (
-      <div className="p-10 bg-gradient-to-br from-red-50 to-red-100 min-h-screen">
-        <div className="bg-white p-8 rounded-2xl shadow-lg border border-red-200 max-w-lg mx-auto text-center">
-          <NoSymbolIcon className="h-12 w-12 text-danger-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-semibold text-danger-700 mb-2">Loading Error</h2>
-          <p className="text-slate-600">{error}</p>
-          <button
-            onClick={() => window.location.reload()} // Simple reload action
-            className="mt-6 px-4 py-2 bg-danger-500 text-white rounded-lg hover:bg-danger-600 transition duration-200"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // --- No Data State ---
-  if (!stats) {
-    return (
-        <div className="flex items-center justify-center min-h-[calc(100vh-200px)] p-10 bg-gradient-to-br from-slate-50 to-indigo-100">
-            <div className="flex flex-col items-center text-center">
-                <CubeTransparentIcon className="h-16 w-16 text-slate-400 mb-4" />
-                <h2 className="text-2xl font-semibold text-slate-600 mb-2">No Dashboard Data</h2>
-                <p className="text-slate-500 max-w-sm">We couldn't find any data to display on the dashboard right now. Please check back later or ensure data sources are active.</p>
-            </div>
-        </div>
-    );
-  }
-
-  // Calculate 'In Stock' count safely
-  const inStockCount = Math.max(0, stats.total_products - stats.low_stock_products - stats.out_of_stock_products);
-
-  // Prepare data for charts
-  const overviewChartData = [
-    { name: 'Products', count: stats.total_products, color: 'var(--color-brand-500)' },
-    { name: 'Categories', count: stats.total_categories, color: 'var(--color-accent-500)' },
-    { name: 'Users', count: stats.total_users, color: 'var(--color-blue-500)' },
-  ];
-
-  const stockPieData = [
-    { name: 'In Stock', value: inStockCount, color: 'var(--color-success-500)' },
-    { name: 'Low Stock', value: stats.low_stock_products, color: 'var(--color-warning-500)' },
-    { name: 'Out of Stock', value: stats.out_of_stock_products, color: 'var(--color-danger-500)' }
-  ];
-
-  const stockStatusChartData = [
-      {
-          name: 'Stock Status',
-          inStock: inStockCount,
-          lowStock: stats.low_stock_products,
-          outOfStock: stats.out_of_stock_products
-      }
-  ];
-
-  const stockAlertChartData = stats.stock_alerts.map(product => ({
-    name: product.name.length > 18 ? product.name.substring(0, 18) + '...' : product.name, // Slightly longer substring
-    stock: product.stock,
-    id: product.id,
-    fullName: product.name,
-    fill: product.stock <= 5 ? 'url(#gradientDanger)' : 'url(#gradientWarning)' // Use gradients
-  }));
-
-  // --- Render Dashboard ---
-  return (
-    <div className="p-6 md:p-10 bg-gradient-to-br from-slate-50 via-white to-indigo-50 min-h-screen">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-bold text-slate-900">Admin Dashboard</h1>
-          <p className="mt-1 text-lg text-slate-600">Welcome back, <span className="font-medium text-brand-600">{user?.name || 'Admin'}</span>!</p>
-        </div>
-        <div className="mt-4 md:mt-0 bg-white rounded-lg px-4 py-2 shadow-sm border border-slate-200 flex items-center text-slate-700 text-sm">
-          <CalendarDaysIcon className="h-5 w-5 mr-2 text-slate-400" />
-          <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-        </div>
-      </div>
-
-      {/* Stat Cards Grid */}
-      <dl className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5 mb-12">
-        <StatCard title="Total Products" value={formatNumber(stats.total_products)} icon={ShoppingCartIcon} colorClass="brand" />
-        <StatCard title="Total Categories" value={formatNumber(stats.total_categories)} icon={TagIcon} colorClass="accent" />
-        <StatCard title="Total Users" value={formatNumber(stats.total_users)} icon={UsersIcon} colorClass="blue" />
-        <StatCard title="Low Stock" value={formatNumber(stats.low_stock_products)} icon={ExclamationTriangleIcon} colorClass="warning" />
-        <StatCard title="Out of Stock" value={formatNumber(stats.out_of_stock_products)} icon={NoSymbolIcon} colorClass="danger" />
-      </dl>
-
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-        {/* Store Overview Chart */}
-        <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-slate-900 flex items-center">
-                <ChartBarIcon className="h-6 w-6 mr-2 text-brand-500" /> Store Overview
-            </h2>
-            <div className="bg-slate-100 rounded-md px-3 py-1 text-xs font-medium text-slate-600">
-              Current Totals
-            </div>
-          </div>
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={overviewChartData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }} barGap={15}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} dy={10} tick={{ fill: '#64748b', fontSize: 12 }} />
-              <YAxis allowDecimals={false} axisLine={false} tickLine={false} width={40} tick={{ fill: '#64748b', fontSize: 12 }} />
-              <Tooltip
-                cursor={{ fill: 'rgba(200, 200, 200, 0.1)' }}
-                contentStyle={{
-                  background: 'rgba(255, 255, 255, 0.9)',
-                  backdropFilter: 'blur(5px)',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '0.75rem',
-                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                  padding: '8px 12px',
-                }}
-                itemStyle={{ color: '#334155', fontSize: '12px' }}
-                labelStyle={{ color: '#0f172a', fontWeight: '600', marginBottom: '4px', fontSize: '13px' }}
-              />
-              <Bar dataKey="count" radius={[8, 8, 0, 0]} >
-                {overviewChartData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={
-                        index === 0 ? 'rgb(255, 90, 31)' : // brand-500
-                        index === 1 ? 'rgb(139, 92, 246)' : // accent-500
-                        'rgb(59, 130, 246)' // blue-500
-                    } />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Stock Distribution Chart */}
-        <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
-          <div className="flex justify-between items-center mb-1"> {/* Reduced bottom margin */}
-            <h2 className="text-xl font-semibold text-slate-900 flex items-center">
-                <ChartPieIcon className="h-6 w-6 mr-2 text-indigo-500" /> Stock Distribution
-            </h2>
-            <div className="bg-slate-100 rounded-md px-3 py-1 text-xs font-medium text-slate-600">
-              Current Status
-            </div>
-          </div>
-           <ResponsiveContainer width="100%" height={350}>
-            <PieChart>
-              <Pie
-                data={stockPieData}
-                cx="50%"
-                cy="50%"
-                innerRadius={80} // Slightly larger inner radius
-                outerRadius={130} // Slightly larger outer radius
-                paddingAngle={3}
-                dataKey="value"
-                stroke="rgba(255, 255, 255, 0.5)" // Add a subtle stroke between slices
-                strokeWidth={1}
-              >
-                 {stockPieData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={
-                        index === 0 ? 'rgb(16, 185, 129)' : // success-500
-                        index === 1 ? 'rgb(245, 158, 11)' : // warning-500
-                        'rgb(239, 68, 68)' // danger-500
-                    } />
-                ))}
-                {/* Optional: Label in the center */}
-                 <Label
-                    value={`${stats.total_products} Total`}
-                    position="center"
-                    fill="#334155" // slate-700
-                    fontSize="16px"
-                    fontWeight="600"
-                    dy={-5} // Adjust vertical position
-                 />
-                 <Label
-                    value="Products"
-                    position="center"
-                    fill="#64748b" // slate-500
-                    fontSize="12px"
-                    dy={15} // Adjust vertical position
-                />
-              </Pie>
-              <Tooltip
-                 contentStyle={{
-                    background: 'rgba(255, 255, 255, 0.9)',
-                    backdropFilter: 'blur(5px)',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '0.75rem',
-                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                    padding: '8px 12px',
-                }}
-                itemStyle={{ color: '#334155', fontSize: '12px' }}
-                formatter={(value: number, name: string) => [`${formatNumber(value)} Products`, name]}
-              />
-              <Legend
-                verticalAlign="bottom"
-                height={50} // Increased height for better spacing
-                iconType="circle"
-                iconSize={10}
-                wrapperStyle={{ paddingTop: '20px' }} // Add padding top
-                formatter={(value, entry) => <span className="text-slate-600 text-sm ml-1">{value}</span>}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-
-
-        {/* Stock Alert Levels Chart */}
-        <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-100 lg:col-span-2"> {/* Span across two columns on large screens */}
-           <div className="flex justify-between items-center mb-6">
-             <h2 className="text-xl font-semibold text-slate-900 flex items-center">
-                 <BellAlertIcon className="h-6 w-6 mr-2 text-warning-500" /> Stock Alert Levels
-             </h2>
-             <div className="bg-slate-100 rounded-md px-3 py-1 text-xs font-medium text-slate-600">
-                 Low & Critical Items
-             </div>
-           </div>
-           {stats.stock_alerts.length > 0 ? (
-             <ResponsiveContainer width="100%" height={400}>
-               <BarChart
-                 data={stockAlertChartData}
-                 margin={{ top: 5, right: 5, left: 5, bottom: 85 }} // Increased bottom margin for rotated labels
-                 barSize={30} // Adjust bar size
-               >
-                    {/* Gradients already defined above */}
-                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                 <XAxis
-                    dataKey="name"
-                    interval={0} // Show all labels
-                    angle={-55} // Rotate labels
-                    textAnchor="end" // Align text to the end after rotation
-                    height={100} // Allocate more height
-                    tick={{ fontSize: 11, fill: '#64748b' }} // Smaller font size
-                    axisLine={false}
-                    tickLine={false}
-                 />
-                 <YAxis
-                   axisLine={false}
-                   tickLine={false}
-                   width={40}
-                   tick={{ fill: '#64748b', fontSize: 12 }}
-                   label={{
-                     value: 'Stock Level',
-                     angle: -90,
-                     position: 'insideLeft',
-                     offset: -5,
-                     style: { textAnchor: 'middle', fill: '#64748b', fontSize: 13 }
-                   }}
-                 />
-                 <Tooltip
-                   cursor={{ fill: 'rgba(200, 200, 200, 0.1)' }}
-                   contentStyle={{
-                        background: 'rgba(255, 255, 255, 0.9)',
-                        backdropFilter: 'blur(5px)',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '0.75rem',
-                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                        padding: '8px 12px',
-                    }}
-                    itemStyle={{ color: '#334155', fontSize: '12px' }}
-                    labelStyle={{ color: '#0f172a', fontWeight: '600', marginBottom: '4px', fontSize: '13px' }}
-                   labelFormatter={(label, items) => {
-                     // Find the full name from the original data
-                     const product = stats.stock_alerts.find(p => p.id === items[0]?.payload?.id);
-                     return product ? product.name : label;
-                   }}
-                   formatter={(value: number) => [`${value} units`, 'Current Stock']}
-                 />
-                 <Bar
-                   dataKey="stock"
-                   background={{ fill: '#f1f5f9', radius: 4 }} // slate-100 background
-                   radius={[6, 6, 0, 0]}
-                 >
-                    {/* Cells now use the fill defined in stockAlertChartData */}
-                 </Bar>
-                 <ReferenceLine y={5} stroke={`rgb(${getComputedStyle(document.documentElement).getPropertyValue('--color-danger-500')})`} strokeDasharray="4 4" strokeWidth={1.5}>
-                   <Label
-                     value="Critical Level (<=5)"
-                     position="insideTopLeft"
-                     fill={`rgb(${getComputedStyle(document.documentElement).getPropertyValue('--color-danger-500')})`} // danger-500
-                     fontSize={11}
-                     fontWeight="500"
-                     dy={-5} // Adjust position slightly
-                   />
-                 </ReferenceLine>
-               </BarChart>
-             </ResponsiveContainer>
-           ) : (
-             <div className="py-16 text-center rounded-lg bg-slate-50 border border-dashed border-slate-300">
-               <CheckCircleIcon className="mx-auto h-14 w-14 text-success-400" />
-               <p className="mt-4 text-lg font-medium text-slate-700">All Clear!</p>
-               <p className="text-sm text-slate-500">No products are currently low on stock.</p>
-             </div>
-           )}
-         </div>
-      </div>
-
-      {/* Lists Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Recent Products List */}
-        <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-slate-900 flex items-center">
-                <ListBulletIcon className="h-6 w-6 mr-2 text-brand-500" /> Recent Products
-            </h2>
-            <button className="text-sm text-brand-600 hover:text-brand-800 font-medium transition duration-200">
-              View All
-            </button>
-          </div>
-          {stats.recent_products.length > 0 ? (
-            <ul className="space-y-3">
-              {stats.recent_products.slice(0, 5).map((product) => ( // Limit to 5 for preview
-                <li key={product.id} className="flex items-center space-x-4 p-3 rounded-lg transition-colors duration-200 hover:bg-brand-50/50">
-                  <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-brand-100 to-brand-200 rounded-lg flex items-center justify-center">
-                    <CubeIcon className="h-5 w-5 text-brand-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-800 truncate" title={product.name}>{product.name}</p>
-                    <p className="text-xs text-slate-500 flex items-center flex-wrap gap-x-1.5">
-                      <span>{product.category?.name || 'Uncategorized'}</span>
-                      <span className="text-slate-300">•</span>
-                      <span>${product.price?.toFixed(2) || '0.00'}</span>
-                       <span className="text-slate-300">•</span>
-                       <span className="inline-flex items-center">
-                         <ClockIcon className="h-3 w-3 mr-1 text-slate-400"/>
-                         {new Date(product.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                       </span>
-                    </p>
-                  </div>
-                  <div className="flex-shrink-0">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      product.status === 'available' ? 'bg-success-100 text-success-700' :
-                      product.status === 'out_of_stock' ? 'bg-danger-100 text-danger-700' :
-                      'bg-warning-100 text-warning-700' // Assuming 'low_stock' or similar might be a status
-                    }`}>
-                      {product.status.replace('_', ' ')} {/* Improve readability */}
+        <div className="h-screen w-64 bg-gray-900 fixed left-0 top-0 text-white">
+            <div className="p-5">
+                <h1 className="text-2xl font-bold text-center mb-8">
+                    <span className="bg-gradient-to-r from-purple-500 to-indigo-600 bg-clip-text text-transparent">
+                        GameXpress
                     </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-             <div className="py-16 text-center rounded-lg bg-slate-50 border border-dashed border-slate-300">
-               <ShoppingCartIcon className="mx-auto h-14 w-14 text-slate-400" />
-               <p className="mt-4 text-lg font-medium text-slate-700">No Recent Products</p>
-               <p className="text-sm text-slate-500">Newly added products will appear here.</p>
-             </div>
-          )}
-        </div>
+                </h1>
+                <div className="space-y-6">
+                    <div className="space-y-2">
+                        {navItems.map((item) => (
+                            <div
+                                key={item.name}
+                                className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
+                                    item.name === active
+                                        ? "bg-indigo-600 text-white"
+                                        : "hover:bg-gray-800"
+                                }`}
+                            >
+                                <item.icon className="h-5 w-5" />
+                                <span>{item.name}</span>
+                                {item.name === active && (
+                                    <div className="ml-auto h-2 w-2 rounded-full bg-white"></div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
 
-        {/* Stock Alerts List */}
-        <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
-          <div className="flex justify-between items-center mb-6">
-             <h2 className="text-xl font-semibold text-slate-900 flex items-center">
-                <BellAlertIcon className="h-6 w-6 mr-2 text-warning-500" /> Stock Alerts
-            </h2>
-            <button className="text-sm text-brand-600 hover:text-brand-800 font-medium transition duration-200">
-              Manage Stock
-            </button>
-          </div>
-          {stats.stock_alerts.length > 0 ? (
-            <ul className="space-y-3">
-              {stats.stock_alerts.slice(0, 5).map((product) => ( // Limit to 5 for preview
-                <li key={product.id} className={`flex items-center space-x-4 p-3 rounded-lg transition-colors duration-200 ${product.stock <= 5 ? 'hover:bg-danger-50/50' : 'hover:bg-warning-50/50'}`}>
-                  <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${product.stock <= 5 ? 'bg-gradient-to-br from-danger-100 to-danger-200' : 'bg-gradient-to-br from-warning-100 to-warning-200'}`}>
-                     <ExclamationTriangleIcon className={`h-5 w-5 ${product.stock <= 5 ? 'text-danger-600' : 'text-warning-600'}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-800 truncate" title={product.name}>{product.name}</p>
-                    <p className="text-xs text-slate-500">
-                      {product.category?.name || 'Uncategorized'}
-                    </p>
-                  </div>
-                  <div className={`flex-shrink-0 text-sm font-semibold px-3 py-1 rounded-full ${product.stock <= 5 ? 'bg-danger-100 text-danger-700' : 'bg-warning-100 text-warning-700'}`}>
-                    Stock: {product.stock}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-             <div className="py-16 text-center rounded-lg bg-slate-50 border border-dashed border-slate-300">
-               <CheckCircleIcon className="mx-auto h-14 w-14 text-success-400" />
-               <p className="mt-4 text-lg font-medium text-slate-700">All Clear!</p>
-               <p className="text-sm text-slate-500">No products are currently low on stock.</p>
-             </div>
-          )}
+                    <hr className="border-gray-700" />
+
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-gray-800">
+                            <UserCircleIcon className="h-5 w-5" />
+                            <span>Profile</span>
+                        </div>
+                        <div className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-gray-800 text-red-400">
+                            <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                            <span>Logout</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-  );
+    );
+};
+
+// Main Dashboard Component
+const AdminDashboard: React.FC = () => {
+    const { user } = useAuth();
+    const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            setIsLoading(true);
+            setError(null);
+            try {
+                const response = await api.get<DashboardStats>(
+                    "/admin/dashboard"
+                );
+                setStats(response.data);
+            } catch (err: any) {
+                console.error("Failed to fetch dashboard data:", err);
+                setError(
+                    err.response?.data?.message ||
+                        err.message ||
+                        "Failed to load dashboard data."
+                );
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchDashboardData();
+    }, []);
+
+    // Loading state with new design
+    if (isLoading) {
+        return (
+            <div className="flex min-h-screen bg-gray-100">
+                <Sidebar active="Dashboard" />
+                <div className="ml-64 w-full p-8">
+                    <div className="flex items-center justify-center h-[80vh]">
+                        <div className="text-center">
+                            <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
+                            <p className="mt-4 text-lg font-medium text-gray-600">
+                                Loading dashboard data...
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Error state with new design
+    if (error) {
+        return (
+            <div className="flex min-h-screen bg-gray-100">
+                <Sidebar active="Dashboard" />
+                <div className="ml-64 w-full p-8">
+                    <div className="flex items-center justify-center h-[80vh]">
+                        <div className="max-w-md text-center p-8 bg-white rounded-lg shadow-lg border border-red-200">
+                            <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-red-100">
+                                <ExclamationTriangleIcon className="h-10 w-10 text-red-500" />
+                            </div>
+                            <h2 className="mt-4 text-xl font-bold text-gray-800">
+                                Error Loading Dashboard
+                            </h2>
+                            <p className="mt-2 text-gray-600">{error}</p>
+                            <button
+                                onClick={() => window.location.reload()}
+                                className="mt-6 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                            >
+                                Try Again
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // No data state with new design
+    if (!stats) {
+        return (
+            <div className="flex min-h-screen bg-gray-100">
+                <Sidebar active="Dashboard" />
+                <div className="ml-64 w-full p-8">
+                    <div className="flex items-center justify-center h-[80vh]">
+                        <div className="max-w-md text-center p-8 bg-white rounded-lg shadow-lg">
+                            <ShoppingBagIcon className="mx-auto h-16 w-16 text-gray-400" />
+                            <h2 className="mt-4 text-xl font-bold text-gray-800">
+                                No Dashboard Data
+                            </h2>
+                            <p className="mt-2 text-gray-600">
+                                We couldn't find any data to display. Please
+                                check back later or add some products to your
+                                store.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Calculate derived data
+    const inStockCount = Math.max(
+        0,
+        stats.total_products -
+            stats.low_stock_products -
+            stats.out_of_stock_products
+    );
+
+    // Sample data for new chart types (using real data where possible)
+    const stockStatus = [
+        { name: "In Stock", value: inStockCount, fill: "#10B981" },
+        { name: "Low Stock", value: stats.low_stock_products, fill: "#F59E0B" },
+        {
+            name: "Out of Stock",
+            value: stats.out_of_stock_products,
+            fill: "#EF4444",
+        },
+    ];
+
+    // Weekly sales data (sample data)
+    const weeklySales = [
+        { name: "Mon", sales: 4000 },
+        { name: "Tue", sales: 3000 },
+        { name: "Wed", sales: 5000 },
+        { name: "Thu", sales: 2780 },
+        { name: "Fri", sales: 1890 },
+        { name: "Sat", sales: 6390 },
+        { name: "Sun", sales: 3490 },
+    ];
+
+    // Performance data (sample)
+    const performance = [
+        { subject: "Sales", A: 120, B: 110, fullMark: 150 },
+        { subject: "Products", A: 98, B: 130, fullMark: 150 },
+        { subject: "Marketing", A: 86, B: 130, fullMark: 150 },
+        { subject: "Support", A: 99, B: 100, fullMark: 150 },
+        { subject: "R&D", A: 85, B: 90, fullMark: 150 },
+        { subject: "Admin", A: 65, B: 85, fullMark: 150 },
+    ];
+
+    return (
+        <div className="flex min-h-screen bg-gray-100">
+            <Sidebar active="Dashboard" />
+            <div className="ml-64 w-full p-8">
+                {/* Header */}
+                <div className="flex justify-between items-center mb-8">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-800">
+                            Dashboard Overview
+                        </h1>
+                        <p className="text-gray-600">
+                            Welcome back,{" "}
+                            <span className="font-medium text-indigo-600">
+                                {user?.name || "Admin"}
+                            </span>
+                        </p>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                        <div className="relative">
+                            <BellAlertIcon className="h-6 w-6 text-gray-500" />
+                            {stats.stock_alerts.length > 0 && (
+                                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                                    {stats.stock_alerts.length > 9
+                                        ? "9+"
+                                        : stats.stock_alerts.length}
+                                </span>
+                            )}
+                        </div>
+                        <div className="h-8 w-8 rounded-full bg-indigo-600 text-white flex items-center justify-center">
+                            {user?.name?.charAt(0) || "A"}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Stats Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <StatCard
+                        title="Total Products"
+                        value={formatNumber(stats.total_products)}
+                        icon={ShoppingBagIcon}
+                        bgColor="bg-gradient-to-br from-indigo-500 to-purple-600"
+                        textColor="text-white"
+                        trend="12%"
+                        trendUp={true}
+                    />
+                    <StatCard
+                        title="Total Categories"
+                        value={formatNumber(stats.total_categories)}
+                        icon={TagIcon}
+                        bgColor="bg-gradient-to-br from-cyan-500 to-blue-600"
+                        textColor="text-white"
+                        trend="5%"
+                        trendUp={true}
+                    />
+                    <StatCard
+                        title="User Accounts"
+                        value={formatNumber(stats.total_users)}
+                        icon={UsersIcon}
+                        bgColor="bg-gradient-to-br from-orange-500 to-amber-600"
+                        textColor="text-white"
+                        trend="3%"
+                        trendUp={true}
+                    />
+                    <StatCard
+                        title="Stock Alerts"
+                        value={formatNumber(
+                            stats.low_stock_products +
+                                stats.out_of_stock_products
+                        )}
+                        icon={ExclamationCircleIcon}
+                        bgColor="bg-gradient-to-br from-red-500 to-rose-600"
+                        textColor="text-white"
+                        trend="8%"
+                        trendUp={false}
+                    />
+                </div>
+
+                {/* Charts Section */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    {/* Weekly Sales */}
+
+                    {/* Performance Radar Chart */}
+                </div>
+
+                {/* Product Sections & Stock Distribution */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Stock Distribution */}
+                    <div className="bg-white p-6 rounded-xl shadow-md">
+                        <h2 className="text-lg font-semibold text-gray-800 mb-4">
+                            Stock Distribution
+                        </h2>
+                        <ResponsiveContainer width="100%" height={250}>
+                            <PieChart>
+                                <Pie
+                                    data={stockStatus}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={80}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                >
+                                    {stockStatus.map((entry, index) => (
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill={entry.fill}
+                                        />
+                                    ))}
+                                </Pie>
+                                <Tooltip
+                                    formatter={(value: number) => [
+                                        `${value} products`,
+                                        "",
+                                    ]}
+                                    contentStyle={{
+                                        borderRadius: "0.5rem",
+                                        boxShadow:
+                                            "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                                        border: "none",
+                                    }}
+                                />
+                                <Legend
+                                    layout="vertical"
+                                    verticalAlign="middle"
+                                    align="right"
+                                    wrapperStyle={{ paddingLeft: "10px" }}
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+
+                    {/* Recent Products */}
+                    <div className="bg-white p-6 rounded-xl shadow-md">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-lg font-semibold text-gray-800">
+                                Recent Products
+                            </h2>
+                            <button className="text-xs font-medium text-indigo-600 hover:text-indigo-800">
+                                View All
+                            </button>
+                        </div>
+
+                        <div className="space-y-3">
+                            {stats.recent_products.length > 0 ? (
+                                stats.recent_products
+                                    .slice(0, 3)
+                                    .map((product) => (
+                                        <ProductCard
+                                            key={product.id}
+                                            product={product}
+                                            variant="recent"
+                                        />
+                                    ))
+                            ) : (
+                                <div className="text-center py-10">
+                                    <CheckBadgeIcon className="mx-auto h-10 w-10 text-gray-400" />
+                                    <p className="mt-2 text-gray-600">
+                                        No recent products added
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Stock Alerts */}
+                    <div className="bg-white p-6 rounded-xl shadow-md">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-lg font-semibold text-gray-800">
+                                Stock Alerts
+                            </h2>
+                            <button className="text-xs font-medium text-indigo-600 hover:text-indigo-800">
+                                Manage Stock
+                            </button>
+                        </div>
+
+                        <div className="space-y-3">
+                            {stats.stock_alerts.length > 0 ? (
+                                stats.stock_alerts
+                                    .slice(0, 3)
+                                    .map((product) => (
+                                        <ProductCard
+                                            key={product.id}
+                                            product={product}
+                                            variant="alert"
+                                        />
+                                    ))
+                            ) : (
+                                <div className="text-center py-10">
+                                    <CheckBadgeIcon className="mx-auto h-10 w-10 text-green-500" />
+                                    <p className="mt-2 text-gray-600">
+                                        All stock levels are normal
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 export default AdminDashboard;
