@@ -1,40 +1,63 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import CardProduit from "./cart/CardProduit";
 import PanierSidebar from "./cart/PanierSidebar";
 import SummaryOrder from "./cart/SummaryOrder";
+import axios from "axios";
+import api from "../../lib/axios";
+
+
+
 // import Navbar from "../layout/Navbar";
 const Home = () => {
     // Mock products data
-    const products = [
-        {
-            id: 1,
-            name: "FIFA 24",
-            price: 69.99,
-            image: "https://via.placeholder.com/300x200?text=FIFA+24",
-        },
-        {
-            id: 2,
-            name: "Call of Duty",
-            price: 59.99,
-            image: "https://via.placeholder.com/300x200?text=Call+of+Duty",
-        },
-        {
-            id: 3,
-            name: "Assassin's Creed",
-            price: 49.99,
-            image: "https://via.placeholder.com/300x200?text=Assassin's+Creed",
-        },
-        {
-            id: 4,
-            name: "Hogwarts Legacy",
-            price: 54.99,
-            image: "https://via.placeholder.com/300x200?text=Hogwarts+Legacy",
-        },
-    ];
+    // const products = [
+    //     {
+    //         id: 1,
+    //         name: "FIFA 24",
+    //         price: 69.99,
+    //         image: "https://via.placeholder.com/300x200?text=FIFA+24",
+    //     },
+    //     {
+    //         id: 2,
+    //         name: "Call of Duty",
+    //         price: 59.99,
+    //         image: "https://via.placeholder.com/300x200?text=Call+of+Duty",
+    //     },
+    //     {
+    //         id: 3,
+    //         name: "Assassin's Creed",
+    //         price: 49.99,
+    //         image: "https://via.placeholder.com/300x200?text=Assassin's+Creed",
+    //     },
+    //     {
+    //         id: 4,
+    //         name: "Hogwarts Legacy",
+    //         price: 54.99,
+    //         image: "https://via.placeholder.com/300x200?text=Hogwarts+Legacy",
+    //     },
+    // ];
+
     // Cart state
+    const [products, setProducts] = useState([]);
     const [cartItems, setCartItems] = useState([]);
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+
+    const fetchProducts = async () => {
+        try {
+            console.log("test");
+            const response = await api.get("admin/products");
+
+            console.log(response.data.data);
+            setProducts(response.data.data);
+        } catch (error) {
+            console.error("Error fetching products:", error);
+        }
+    };
+    useEffect(() => {
+        fetchProducts();
+    }, []);
+
     // Add item to cart
     const handleAddToCart = (product: any) => {
         setCartItems((prevItems: any) => {

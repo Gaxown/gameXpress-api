@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import { tr } from "framer-motion/client";
+import React, { useContext, useState } from "react";
+import api from "../../../lib/axios";
+import { CartContext } from "../../../context/CartContext";
 
 // interface Product {
 //   id: number;
@@ -9,18 +12,17 @@ import React, { useState } from 'react';
 //   stock: string;
 // }
 
-interface CardProduitProps {
-  product: any;
-  onAddToCart: (product:any) => void;
-}
 
+
+
+interface CardProduitProps {
+    product: any;
+}
 
 const CardProduit = (props: CardProduitProps) => {
     const [quantity, setQuantity] = useState(1);
 
-    const handleAddToCart = () => {
-        props.onAddToCart({ ...props.product, quantity });
-    };
+    const {cart, setCart, onAddToCart} = useContext(CartContext)
 
     return (
         <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
@@ -67,7 +69,7 @@ const CardProduit = (props: CardProduitProps) => {
                 </div>
 
                 <button
-                    onClick={handleAddToCart}
+                    onClick={onAddToCart}
                     className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors duration-300"
                 >
                     Add to Cart
